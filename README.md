@@ -1,27 +1,23 @@
-# toolquota
+<p align="center">
+  <img src="https://raw.githubusercontent.com/sandeshbagmare/toolquota/main/assets/banner.svg" width="100%" alt="toolquota: client-side rate limits your agent loop can wait on">
+</p>
 
-Client-side per-tool rate limits an agent can act on, before the server says no.
+<p align="center">
+  <a href="https://pypi.org/project/toolquota/"><img alt="PyPI version" src="https://img.shields.io/pypi/v/toolquota.svg"></a>
+  <a href="https://pypi.org/project/toolquota/"><img alt="Python versions" src="https://img.shields.io/pypi/pyversions/toolquota.svg"></a>
+  <a href="https://pypi.org/project/toolquota/"><img alt="Downloads" src="https://img.shields.io/pypi/dm/toolquota.svg"></a>
+  <a href="https://github.com/sandeshbagmare/toolquota/actions/workflows/ci.yml"><img alt="CI" src="https://github.com/sandeshbagmare/toolquota/actions/workflows/ci.yml/badge.svg"></a>
+  <a href="https://github.com/sandeshbagmare/toolquota/blob/main/LICENSE"><img alt="License" src="https://img.shields.io/pypi/l/toolquota.svg"></a>
+  <a href="https://sandeshbagmare.github.io/toolquota/"><img alt="docs" src="https://img.shields.io/badge/docs-online-2ea44f.svg"></a>
+  <a href="https://pypi.org/project/toolquota/"><img alt="zero dependencies" src="https://img.shields.io/badge/dependencies-0-2ea44f.svg"></a>
+</p>
 
-[![PyPI](https://img.shields.io/pypi/v/toolquota.svg)](https://pypi.org/project/toolquota/)
-[![Python](https://img.shields.io/pypi/pyversions/toolquota.svg)](https://pypi.org/project/toolquota/)
-[![tests](https://github.com/sandeshbagmare/toolquota/actions/workflows/ci.yml/badge.svg)](https://github.com/sandeshbagmare/toolquota/actions/workflows/ci.yml)
-[![license](https://img.shields.io/pypi/l/toolquota.svg)](https://github.com/sandeshbagmare/toolquota/blob/main/LICENSE)
+<h3 align="center">client-side rate limits your agent loop can wait on</h3>
+<p align="center"><em>Standard library only. No runtime dependencies. Python 3.9+.</em></p>
 
-```python
->>> from toolquota import Quota, ToolQuota
->>> quota = ToolQuota(default=Quota(rate=1, burst=2))
->>> quota.try_acquire("search"), quota.try_acquire("search")
-(True, True)
->>> quota.try_acquire("search")
-False
->>> round(quota.wait_time("search"), 1)
-1.0
-```
-
-A search API allows ten requests a minute. An agent in a retry loop makes twenty in
-fifteen seconds and then everything fails at once. Waiting for the server to say
-`429` is waiting one call too late: the tool is a limited resource, and the runtime
-should know that before it calls.
+<p align="center">
+  <img src="https://raw.githubusercontent.com/sandeshbagmare/toolquota/main/assets/how.svg" width="720" alt="how toolquota fits in">
+</p>
 
 ## Install
 

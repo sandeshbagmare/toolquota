@@ -1,0 +1,172 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>toolquota — client-side rate limits your agent loop can wait on</title>
+<meta name="description" content="Client-side rate limits your agent loop can wait on. Standard library only, Python 3.9+.">
+<meta property="og:title" content="toolquota — client-side rate limits your agent loop can wait on">
+<meta property="og:description" content="Client-side rate limits your agent loop can wait on. Standard library only, Python 3.9+.">
+<meta property="og:image" content="https://raw.githubusercontent.com/sandeshbagmare/toolquota/main/assets/banner.svg">
+<meta property="og:type" content="website">
+<link rel="icon" href="../assets/logo.svg" type="image/svg+xml">
+<style>
+  :root {
+    --bg: hsl(172 45% 8%);
+    --ink: #e6edf6;
+    --muted: #9fb0c6;
+    --line: hsl(172 35% 26%);
+    --accent: hsl(208 88% 66%);
+    --soft: hsl(208 92% 80%);
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; background: var(--bg); color: var(--ink);
+    font: 16px/1.65 ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  }
+  a { color: var(--soft); text-decoration: none; }
+  a:hover { text-decoration: underline; }
+  header {
+    position: sticky; top: 0; z-index: 9; display: flex; gap: 18px; align-items: center;
+    padding: 14px 24px; background: rgba(8, 12, 20, 0.86); backdrop-filter: blur(8px);
+    border-bottom: 1px solid var(--line);
+  }
+  header .mark { width: 26px; height: 26px; }
+  header strong { font-family: ui-monospace, monospace; letter-spacing: 0.02em; }
+  header nav { margin-left: auto; display: flex; gap: 16px; font-size: 14px; }
+  .hero { max-width: 1180px; margin: 0 auto; padding: 18px 20px 0; }
+  .hero img { width: 100%; border-radius: 14px; box-shadow: 0 18px 50px rgba(0,0,0,0.45); }
+  main { max-width: 900px; margin: 0 auto; padding: 28px 20px 80px; }
+  h1, h2, h3, h4 { line-height: 1.25; }
+  h2 { margin-top: 44px; padding-top: 18px; border-top: 1px solid var(--line); }
+  code {
+    font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 0.92em;
+    background: rgba(148, 163, 184, 0.15); padding: 1px 5px; border-radius: 5px;
+  }
+  pre.code {
+    position: relative; background: #070b12; border: 1px solid var(--line);
+    border-radius: 12px; padding: 16px; overflow-x: auto;
+  }
+  pre.code code { background: none; padding: 0; font-size: 14px; }
+  pre .lang {
+    position: absolute; top: 8px; right: 12px; font-size: 11px; letter-spacing: 0.08em;
+    text-transform: uppercase; color: var(--muted);
+  }
+  table { width: 100%; border-collapse: collapse; margin: 18px 0; font-size: 15px; }
+  th, td { text-align: left; padding: 9px 12px; border-bottom: 1px solid var(--line); }
+  th { color: var(--muted); font-weight: 600; }
+  img { max-width: 100%; }
+  blockquote {
+    margin: 18px 0; padding: 4px 16px; border-left: 3px solid var(--accent);
+    color: var(--muted);
+  }
+  footer {
+    border-top: 1px solid var(--line); padding: 26px 20px; color: var(--muted);
+    font-size: 14px; text-align: center;
+  }
+</style>
+</head>
+<body>
+<header>
+  <img class="mark" src="../assets/logo.svg" alt="">
+  <strong>toolquota</strong>
+  <nav>
+    <a href="https://pypi.org/project/toolquota/">PyPI</a>
+    <a href="https://github.com/sandeshbagmare/toolquota">GitHub</a>
+    <a href="https://github.com/sandeshbagmare/toolquota/issues">Issues</a>
+    <a href="https://github.com/sandeshbagmare/toolquota/blob/main/CHANGELOG.md">Changelog</a>
+  </nav>
+</header>
+<div class="hero"><img src="../assets/banner.svg" alt="toolquota"></div>
+<main>
+<p align="center">
+  <img src="../assets/how.svg" width="720" alt="how toolquota fits in">
+</p>
+<h2>Install</h2>
+<pre class="code"><span class="lang">console</span><code>pip install toolquota</code></pre>
+<h2>Use</h2>
+<pre class="code"><span class="lang">python</span><code>from toolquota import Quota, QuotaExceeded, ToolQuota
+
+quota = ToolQuota(
+    default=Quota(rate=1, burst=3),                       # any tool: 1/s, 3 at once
+    quotas={
+        &quot;search&quot;: Quota(rate=10 / 60, burst=2, max_calls=40),
+        &quot;browser&quot;: Quota(rate=1 / 5, burst=1, max_calls=12),
+    },
+)
+
+def call_tool(name, arguments, tool):
+    if not quota.try_acquire(name):
+        wait = quota.wait_time(name)
+        if wait == float(&quot;inf&quot;):
+            return {&quot;error&quot;: f&quot;{name} has used its whole quota for this run&quot;}
+        return {
+            &quot;error&quot;: f&quot;{name} is rate limited; wait {wait:.1f}s, or tell the user&quot;,
+            &quot;retry_after&quot;: wait,
+        }
+    return tool(**arguments)</code></pre>
+<p>Or let it raise:</p>
+<pre class="code"><span class="lang">python</span><code>try:
+    quota.acquire(&quot;search&quot;)
+except QuotaExceeded as error:
+    error.wait_time       # seconds, or inf when max_calls is spent
+    error.permanent       # True when no amount of waiting helps
+    str(error)            # &quot;&#x27;search&#x27; is rate limited; retry in 0.40s&quot;</code></pre>
+<p>Reading it back:</p>
+<pre class="code"><span class="lang">python</span><code>quota.remaining(&quot;search&quot;)   # calls available now
+quota.calls(&quot;search&quot;)       # calls taken since reset
+quota.report()              # {&quot;search&quot;: {&quot;calls&quot;: 7, &quot;available&quot;: 1.4}}
+quota.reset()               # new run</code></pre>
+<h2>How the bucket works</h2>
+<ul>
+<li>each tool starts with a full bucket of <code>burst</code> calls</li>
+<li>calls are deducted on acquire; tokens refill at <code>rate</code> per second, capped at <code>burst</code></li>
+<li><code>max_calls</code> is an absolute cap for the run and never refills — use it for paid tools</li>
+</ul>
+<p>  and for tools that must not be hammered at all</p>
+<ul>
+<li><code>wait_time</code> is exact for a token bucket: <code>(count - available) / rate</code></li>
+<li>the clock is injectable, so tests do not sleep:</li>
+</ul>
+<pre class="code"><span class="lang">python</span><code>now = 0.0
+quota = ToolQuota(clock=lambda: now)</code></pre>
+<h2>Rules</h2>
+<ul>
+<li>A quota is per process. Two workers each get their own bucket, which is usually right</li>
+</ul>
+<p>  for an agent and wrong for a shared API key — share a bucket through your own store if   that is the case.</p>
+<ul>
+<li><code>rate</code> is calls per second: <code>Quota(rate=10/60, burst=2)</code> is ten calls a minute.</li>
+<li><code>try_acquire</code> never blocks and never sleeps. Sleeping is the caller's decision, which</li>
+</ul>
+<p>  is why <code>wait_time</code> is returned rather than used.</p>
+<ul>
+<li><code>reset()</code> at the start of a run, or keep one object for the process if the limits are</li>
+</ul>
+<p>  really per process.</p>
+<h2>Limits</h2>
+<ul>
+<li>It limits; it does not queue or schedule. There is no async version: a token bucket is</li>
+</ul>
+<p>  arithmetic, so call it from either kind of code.</p>
+<ul>
+<li>No distributed store, no Redis backend, no persistence. Deliberate: a limiter that</li>
+</ul>
+<p>  needs a server is a limiter that breaks the run when the server is down.</p>
+<ul>
+<li>Retries of a failed call count against the quota, which is what the server sees too.</li>
+</ul>
+<h2>Development</h2>
+<pre class="code"><span class="lang">console</span><code>python -m venv .venv
+.venv/bin/pip install -e &quot;.[test]&quot;
+.venv/bin/pytest</code></pre>
+<h2>License</h2>
+<p>MIT.</p>
+</main>
+<footer>
+  toolquota · MIT · standard library only ·
+  <a href="https://github.com/sandeshbagmare/toolquota">source</a> ·
+  <a href="https://pypi.org/project/toolquota/">pip install toolquota</a>
+</footer>
+</body>
+</html>
